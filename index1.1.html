@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#070b14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>UTN Sistemas – Tracker Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────── -->
+<header>
+
+  <!-- Row 1: Title + Stats -->
+  <div class="header-row-1">
+    <div class="header-title">
+      <h1>UTN · SISTEMAS</h1>
+      <p>Plan 2023 · Tracker Pro</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat cyan">
+        <div class="stat-n" id="s-cursables">0</div>
+        <div class="stat-l">Disp.</div>
+      </div>
+      <div class="stat amber">
+        <div class="stat-n" id="s-regulares">0</div>
+        <div class="stat-l">Reg.</div>
+      </div>
+      <div class="stat green">
+        <div class="stat-n" id="s-aprobadas">0</div>
+        <div class="stat-l">Aprob.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Progress bar -->
+  <div class="header-row-2">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="p-label">0 / 36 materias aprobadas</span>
+        <span id="p-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="barra"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Controls + Legend -->
+  <div class="header-row-3">
+    <div class="controls">
+      <span class="controls-label">Árbol</span>
+      <button class="btn active" id="btn-ambos"   onclick="setEdgeMode('ambos')">Ambos</button>
+      <button class="btn" id="btn-regular"  onclick="setEdgeMode('regular')">Req. Reg.</button>
+      <button class="btn" id="btn-aprobada" onclick="setEdgeMode('aprobada')">Req. Apr.</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="legend">
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:var(--muted);background:var(--pending)"></div>
+        Pend.
+      </div>
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:var(--cyan);background:rgba(34,211,238,0.1)"></div>
+        Disp.
+      </div>
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:var(--amber);background:rgba(245,158,11,0.1)"></div>
+        Reg.
+      </div>
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:var(--green);background:rgba(16,185,129,0.1)"></div>
+        Aprob.
+      </div>
+      <div class="leg-item">
+        <div class="leg-line" style="background:var(--cyan)"></div>
+        Req. reg.
+      </div>
+      <div class="leg-item">
+        <div class="leg-line" style="background:var(--amber);height:2.5px"></div>
+        Req. apr.
+      </div>
+    </div>
+  </div>
+
+</header>
+
+<!-- ── NETWORK ──────────────────────────────────── -->
+<div id="net-wrap">
+  <div id="mynetwork"></div>
+</div>
+
+<!-- ── TOOLTIP ──────────────────────────────────── -->
+<div id="tooltip">
+  <button id="tt-close" onclick="closeTooltip()">✕</button>
+  <div class="tt-name" id="tt-name">—</div>
+  <div class="tt-row">Estado: <span id="tt-estado">—</span></div>
+  <div class="tt-row">Req. regular: <span id="tt-cursar">—</span></div>
+  <div class="tt-row">Req. aprobada: <span id="tt-rendir">—</span></div>
+  <div class="tt-hint" id="tt-hint"></div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── INSTRUCTIONS ────────────────────────────── -->
+<div id="instructions">
+  <span class="desktop-only">
+    <strong>Click 1×</strong> → Regular<br>
+    <strong>Click 2×</strong> → Aprobada<br>
+    <strong>Click 3×</strong> → Resetear<br>
+    <strong>Hover</strong> → Detalles
+  </span>
+  <span class="touch-only">
+    <strong>Tap 1×</strong> → Regular<br>
+    <strong>Tap 2×</strong> → Aprobada<br>
+    <strong>Tap 3×</strong> → Resetear<br>
+    <strong>Tap largo</strong> → Detalles
+  </span>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
