@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UTN Sistemas – Tracker Pro | Acceso</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #0f0f18;
+      --border:   #1e1e2e;
+      --cyan:     #22d3ee;
+      --cyan-dim: #0e7490;
+      --green:    #10b981;
+      --text:     #e2e8f0;
+      --muted:    #475569;
+      --error:    #f87171;
+      --font-mono:'IBM Plex Mono', monospace;
+      --font-disp:'Syne', sans-serif;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: grid-drift 20s linear infinite;
+    }
+    @keyframes grid-drift { from { transform: translateY(0); } to { transform: translateY(40px); } }
+
+    .bg-glow-1 {
+      position: absolute; width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%);
+      top: -200px; left: -100px;
+      animation: float1 12s ease-in-out infinite alternate;
+    }
+    .bg-glow-2 {
+      position: absolute; width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 70%);
+      bottom: -100px; right: -50px;
+      animation: float2 15s ease-in-out infinite alternate;
+    }
+    @keyframes float1 { from { transform: translate(0,0); } to { transform: translate(60px,40px); } }
+    @keyframes float2 { from { transform: translate(0,0); } to { transform: translate(-40px,-60px); } }
+
+    .card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 400px;
+      margin: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      animation: card-in 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .card::before {
+      content: ''; display: block; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--green), transparent);
+    }
+
+    .card-header { padding: 1.75rem 2rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .card-logo {
+      font-family: var(--font-disp); font-size: 1.4rem; font-weight: 800;
+      letter-spacing: 0.05em; color: var(--text); line-height: 1;
+    }
+    .card-logo span { color: var(--cyan); }
+    .card-subtitle {
+      font-size: 0.65rem; color: var(--muted);
+      letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.4rem;
+    }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .tab {
+      flex: 1; padding: 0.9rem; background: none; border: none;
+      color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem;
+      letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+      position: relative; transition: color 0.2s;
+    }
+    .tab::after {
+      content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+      height: 2px; background: var(--cyan);
+      transform: scaleX(0); transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+    }
+    .tab.active { color: var(--cyan); }
+    .tab.active::after { transform: scaleX(1); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    .forms { padding: 1.75rem 2rem 2rem; }
+    .form { display: none; flex-direction: column; gap: 1rem; }
+    .form.active { display: flex; animation: fade-in 0.3s ease; }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field label { font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .field input {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+      padding: 0.65rem 0.85rem; color: var(--text);
+      font-family: var(--font-mono); font-size: 0.85rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus {
+      border-color: var(--cyan-dim);
+      box-shadow: 0 0 0 3px rgba(34,211,238,0.08);
+    }
+    .field input::placeholder { color: var(--muted); opacity: 0.5; }
+
+    .btn-submit {
+      margin-top: 0.5rem; padding: 0.75rem;
+      background: transparent; border: 1px solid var(--cyan); border-radius: 2px;
+      color: var(--cyan); font-family: var(--font-mono); font-size: 0.72rem;
+      letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
+      position: relative; overflow: hidden; transition: color 0.25s;
+    }
+    .btn-submit::before {
+      content: ''; position: absolute; inset: 0; background: var(--cyan);
+      transform: translateX(-101%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); z-index: 0;
+    }
+    .btn-submit:hover::before { transform: translateX(0); }
+    .btn-submit:hover { color: var(--bg); }
+    .btn-submit span { position: relative; z-index: 1; }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    .msg {
+      font-size: 0.7rem; padding: 0.6rem 0.85rem;
+      border-radius: 2px; display: none; animation: fade-in 0.2s ease;
+    }
+    .msg.error {
+      display: block;
+      background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); color: var(--error);
+    }
+    .msg.success {
+      display: block;
+      background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); color: var(--green);
+    }
+
+    .card-footer {
+      padding: 0.9rem 2rem; border-top: 1px solid var(--border);
+      font-size: 0.6rem; color: var(--muted); letter-spacing: 0.06em;
+      display: flex; justify-content: space-between;
+    }
+    .card-footer span { color: var(--cyan); }
+
+    .remember-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.68rem; color: var(--muted); cursor: pointer;
+      user-select: none;
+    }
+    .remember-row input[type="checkbox"] {
+      accent-color: var(--cyan); width: 13px; height: 13px; cursor: pointer;
+    }
+    .remember-row:hover span { color: var(--text); }
+
+    .spinner {
+      display: inline-block; width: 10px; height: 10px;
+      border: 2px solid currentColor; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      margin-right: 6px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-grid"></div>
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-logo">UTN <span>SISTEMAS</span></div>
+    <div class="card-subtitle">Tracker Pro // Acceso al sistema</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-login" onclick="switchTab('login')">Iniciar sesión</button>
+    <button class="tab" id="tab-register" onclick="switchTab('register')">Registrarse</button>
+  </div>
+
+  <div class="forms">
+
+    <!-- LOGIN -->
+    <div class="form active" id="form-login">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="tu@email.com" autocomplete="email"/>
+      </div>
+      <div class="field">
+        <label for="login-pass">Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+
+      <label class="remember-row">
+        <input type="checkbox" id="remember-me" checked/>
+        <span>Recordar mi sesión</span>
+      </label>
+      <div class="msg" id="login-msg"></div>
+      <button class="btn-submit" id="btn-login" onclick="handleLogin()">
+        <span>Ingresar</span>
+      </button>
+    </div>
+
+    <!-- REGISTRO -->
+    <div class="form" id="form-register">
+      <div class="field">
+        <label for="reg-email">Email</label>
+        <input type="email" id="reg-email" placeholder="tu@email.com" autocomplete="email"/>
+      </div>
+      <div class="field">
+        <label for="reg-pass">Contraseña</label>
+        <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+      </div>
+      <div class="field">
+        <label for="reg-pass2">Confirmar contraseña</label>
+        <input type="password" id="reg-pass2" placeholder="Repetí la contraseña" autocomplete="new-password"/>
+      </div>
+      <div class="msg" id="reg-msg"></div>
+      <button class="btn-submit" id="btn-register" onclick="handleRegister()">
+        <span>Crear cuenta</span>
+      </button>
+    </div>
+
+  </div>
+
+  <div class="card-footer">
+    <span>UTN // FRD</span>
+    <span>Sistemas 2025</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ── Configuración Supabase ──────────────────────
+  const SUPABASE_URL = 'https://qfqajybfwvfqowcfwibv.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_dMFDLETv_JEKYmNxgIYl6w_0gmhJS8Q';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Si ya tiene sesión activa → ir directo al tracker
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) window.location.href = 'index.html';
+  })();
+
+  // ── Tabs ───────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('form-' + tab).classList.add('active');
+    clearMsgs();
+  }
+
+  function clearMsgs() {
+    document.querySelectorAll('.msg').forEach(m => { m.className = 'msg'; m.textContent = ''; });
+  }
+
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = 'msg ' + type;
+    el.textContent = text;
+  }
+
+  function setLoading(btnId, loading, defaultText) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.querySelector('span').innerHTML = loading
+      ? '<span class="spinner"></span>Procesando...'
+      : defaultText;
+  }
+
+  // ── Login ──────────────────────────────────────
+  async function handleLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const pass     = document.getElementById('login-pass').value;
+    const remember = document.getElementById('remember-me').checked;
+    clearMsgs();
+
+    if (!email || !pass) { showMsg('login-msg', 'Completá todos los campos.', 'error'); return; }
+
+    // Configuramos persistencia según "Recordarme"
+    // 'local' = persiste aunque cierres el navegador
+    // 'session' = se borra al cerrar la pestaña
+    sb.auth.persistSession = remember;
+    await sb.auth.setSession ? null : null; // compatibilidad
+
+    setLoading('btn-login', true, 'Ingresar');
+    const { error } = await sb.auth.signInWithPassword({
+      email,
+      password: pass,
+      options: { persistSession: remember }
+    });
+    setLoading('btn-login', false, 'Ingresar');
+
+    if (error) {
+      const msg = error.message.includes('Invalid login')
+        ? 'Email o contraseña incorrectos.'
+        : error.message.includes('Email not confirmed')
+        ? 'Confirmá tu email antes de ingresar (revisá tu bandeja).'
+        : 'Error: ' + error.message;
+      showMsg('login-msg', msg, 'error');
+    } else {
+      showMsg('login-msg', '✓ Acceso correcto. Redirigiendo...', 'success');
+      setTimeout(() => window.location.href = 'index.html', 800);
+    }
+  }
+
+  // ── Registro ───────────────────────────────────
+  async function handleRegister() {
+    const email = document.getElementById('reg-email').value.trim();
+    const pass  = document.getElementById('reg-pass').value;
+    const pass2 = document.getElementById('reg-pass2').value;
+    clearMsgs();
+
+    if (!email || !pass || !pass2) { showMsg('reg-msg', 'Completá todos los campos.', 'error'); return; }
+    if (pass !== pass2)            { showMsg('reg-msg', 'Las contraseñas no coinciden.', 'error'); return; }
+    if (pass.length < 6)           { showMsg('reg-msg', 'La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
+
+    setLoading('btn-register', true, 'Crear cuenta');
+    const { error } = await sb.auth.signUp({ email, password: pass });
+    setLoading('btn-register', false, 'Crear cuenta');
+
+    if (error) {
+      const msg = error.message.includes('already registered')
+        ? 'Este email ya está registrado. Iniciá sesión.'
+        : 'Error: ' + error.message;
+      showMsg('reg-msg', msg, 'error');
+    } else {
+      showMsg('reg-msg', '✓ Cuenta creada. Revisá tu email para confirmar el registro.', 'success');
+    }
+  }
+
+  // Enter para enviar
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const loginActive = document.getElementById('form-login').classList.contains('active');
+    if (loginActive) handleLogin(); else handleRegister();
+  });
+</script>
+
+</body>
+</html>
