@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Tracker Pro - UTN Sistemas. Gestor interactivo de correlativas y avance de carrera.">
+  <title>UTN Sistemas – Tracker Pro | Optimizado</title>
+
+  <!-- Google AdSense - Código de verificación -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3480409078905239"
+    crossorigin="anonymous"></script>
+
+  <!-- Fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Scripts Diferidos -->
+  <script defer src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Main Script -->
+  <script defer src="script.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+     HEADER
+     ════════════════════════════════════════════════ -->
+  <header>
+    <div class="header-title">
+      <h1>UTN SISTEMAS</h1>
+      <p>Tracker Pro</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat green">
+        <div class="stat-n" id="s-aprobadas">0</div>
+        <div class="stat-l">Aprobadas</div>
+      </div>
+      <div class="stat amber">
+        <div class="stat-n" id="s-regulares">0</div>
+        <div class="stat-l">Regulares</div>
+      </div>
+      <div class="stat cyan">
+        <div class="stat-n" id="s-cursables">0</div>
+        <div class="stat-l">Cursables</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="p-label">0 / 0 materias aprobadas</span>
+        <span id="p-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="barra"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="controls" aria-label="Filtros de correlativas">
+      <span class="controls-label" id="filtro-label">Árbol</span>
+      <button id="btn-ambos" class="btn active" aria-labelledby="filtro-label btn-ambos" aria-pressed="true"
+        onclick="setEdgeMode('ambos')">Ambos</button>
+      <button id="btn-regular" class="btn" aria-labelledby="filtro-label btn-regular" aria-pressed="false"
+        onclick="setEdgeMode('regular')">Regular</button>
+      <button id="btn-aprobada" class="btn" aria-labelledby="filtro-label btn-aprobada" aria-pressed="false"
+        onclick="setEdgeMode('aprobada')">Aprobada</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- NUEVO: Botón Electivas -->
+    <button id="btn-electivas" class="btn btn-electivas" aria-expanded="false" aria-controls="panel-electivas"
+      onclick="toggleElectivas()">
+      Electivas
+    </button>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <div class="legend">
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:#22d3ee;background:#22d3ee33;"></div>
+        <span>Cursable</span>
+      </div>
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:#f59e0b;background:#f59e0b33;"></div>
+        <span>Regular</span>
+      </div>
+      <div class="leg-item">
+        <div class="leg-dot" style="border-color:#10b981;background:#10b98133;"></div>
+        <span>Aprobada</span>
+      </div>
+      <div class="leg-item">
+        <div class="leg-line" style="background:#22d3ee;"></div>
+        <span>Req. Cursar</span>
+      </div>
+      <div class="leg-item">
+        <div class="leg-line" style="background:#f59e0b;"></div>
+        <span>Req. Rendir</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL (Grafo de materias)
+     ════════════════════════════════════════════════ -->
+  <main>
+    <div id="mynetwork"></div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════
+     PANEL LATERAL DE ELECTIVAS (Aside)
+     ════════════════════════════════════════════════ -->
+  <aside id="panel-electivas" class="panel-electivas" aria-hidden="true">
+    <div class="panel-header">
+      <div class="panel-title">
+        <h2>ELECTIVAS</h2>
+      </div>
+      <button class="btn-close" onclick="toggleElectivas()" aria-label="Cerrar panel de electivas">✕</button>
+    </div>
+
+    <!-- Contador de horas -->
+    <div class="electivas-progress" aria-live="polite">
+      <div class="prog-label">
+        <span id="e-horas-actual">0</span> / <span>20</span> horas completadas
+      </div>
+      <div class="prog-track" aria-hidden="true">
+        <div class="prog-fill" id="e-barra"></div>
+      </div>
+      <div class="prog-pct" id="e-pct">0%</div>
+    </div>
+
+    <!-- Contenedor de nodos por nivel -->
+    <div class="electivas-content" id="electivas-content" role="region"
+      aria-label="Lista de materias electivas por nivel">
+      <!-- Los nodos se generarán dinámicamente aquí -->
+    </div>
+  </aside>
+
+  <!-- Overlay para cerrar panel -->
+  <div id="panel-overlay" class="panel-overlay" aria-hidden="true" onclick="toggleElectivas()"></div>
+
+  <!-- ═══════════════════════════════════════════════════
+     TOOLTIP Y TOAST
+     ════════════════════════════════════════════════ -->
+  <div id="tooltip">
+    <div class="tt-header">
+      <div class="tt-name" id="tt-name"></div>
+      <div class="tt-code" id="tt-code"></div>
+    </div>
+    <div class="tt-row">Estado: <span id="tt-estado"></span></div>
+    <div class="tt-row">Para cursar: <span id="tt-cursar"></span></div>
+    <div class="tt-row">Para rendir: <span id="tt-rendir"></span></div>
+    <div class="tt-hint" id="tt-hint"></div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+</body>
+
+</html>
