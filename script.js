@@ -56,7 +56,8 @@ materias.forEach(m => materiaMap[m.id] = m);
 
 let estados = {};
 let _guardandoEnNube = false;
-let _pendienteGuardar = false;
+let _saveTimer = null;
+const SAVE_DEBOUNCE_MS = 600;
 
 // Carga el progreso del usuario desde Supabase al iniciar
 async function cargarDesdeNube() {
@@ -81,26 +82,39 @@ async function cargarDesdeNube() {
   if (document.getElementById("e-horas-actual")) actualizarProgresElectivas();
 }
 
-// Guarda el progreso en Supabase (con debounce para no saturar)
-async function guardar() {
-  if (_guardandoEnNube) { _pendienteGuardar = true; return; }
+async function _persistir() {
+  if (_guardandoEnNube) return;
   _guardandoEnNube = true;
-
-  const sb = window._sb;
-  if (!sb) { _guardandoEnNube = false; return; }
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) { _guardandoEnNube = false; return; }
-
-  await sb.from("progreso").upsert({
-    user_id:     user.id,
-    estados:     estados,
-    electivas:   estadosElectivas,
-    actualizado: new Date().toISOString()
-  }, { onConflict: "user_id" });
-
-  _guardandoEnNube = false;
-  if (_pendienteGuardar) { _pendienteGuardar = false; guardar(); }
+  try {
+    const sb = window._sb;
+    if (!sb) return;
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+    await sb.from("progreso").upsert({
+      user_id:     user.id,
+      estados:     estados,
+      electivas:   estadosElectivas,
+      actualizado: new Date().toISOString()
+    }, { onConflict: "user_id" });
+  } finally {
+    _guardandoEnNube = false;
+  }
 }
+
+// Debounce: agrupa clicks rápidos en un solo upsert
+function guardar() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => { _saveTimer = null; _persistir(); }, SAVE_DEBOUNCE_MS);
+}
+
+// Flush pendiente al cerrar la pestaña
+window.addEventListener("beforeunload", () => {
+  if (_saveTimer) {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    _persistir();
+  }
+});
 
 function estado(id) { return estados[id] || "pendiente"; }
 
@@ -229,11 +243,20 @@ function setEdgeMode(mode) {
 let pulseIDs = new Set();
 let animFrame;
 let isVisible = !document.hidden;
+let _lastPulseT = 0;
+const PULSE_INTERVAL_MS = 50; // ~20fps — suficiente para el glow
 
 function renderPulse(timestamp) {
   if (!isVisible) return; // Suspender si pestaña inactiva
 
-  const t = (Math.sin(timestamp / 200) + 1) / 2; // Suave sinte basado en marca de tiempo global
+  // Throttle: evita saturar vis-network con redibujados a 60fps
+  if (timestamp - _lastPulseT < PULSE_INTERVAL_MS) {
+    animFrame = requestAnimationFrame(renderPulse);
+    return;
+  }
+  _lastPulseT = timestamp;
+
+  const t = (Math.sin(timestamp / 200) + 1) / 2;
 
   if (pulseIDs.size > 0) {
     const updates = [];
@@ -257,8 +280,7 @@ function renderPulse(timestamp) {
         }
       });
     });
-    // Se actualizan en un solo batch iterativo por cuadro
-    nodes.update(updates);
+    if (updates.length) nodes.update(updates);
   }
 
   animFrame = requestAnimationFrame(renderPulse);
@@ -418,71 +440,87 @@ function showToast(msg) {
 //  ACTUALIZAR VISUAL
 // ═══════════════════════════════════════════════════
 
+// Caches de firma para diffear contra el último estado aplicado a vis
+const _lastNodeSig = new Map();
+const _lastEdgeSig = new Map();
+
 function actualizar() {
   pulseIDs.clear();
 
-  // ── NODES
+  // Memo por pasada: cumpleReqs se invoca varias veces por materia
+  const _cumpleCache = new Map();
+  const cumple = m => {
+    let v = _cumpleCache.get(m.id);
+    if (v === undefined) { v = cumpleReqs(m); _cumpleCache.set(m.id, v); }
+    return v;
+  };
+
+  // ── NODES (con diff)
+  let aprobadas = 0, regulares = 0, cursables = 0;
+  const nodeUpdates = [];
+
   materias.forEach(m => {
     const est = estado(m.id);
-    const cursable = esCursable(m);
-    const rendible = esRendible(m);
+    const cursable = est === "pendiente" && cumple(m);
+    const rendible = est === "regular";
 
-    let bg, border, fontColor, bw, shadow = false;
+    if (est === "aprobada") aprobadas++;
+    else if (est === "regular") regulares++;
+    if (cursable) cursables++;
 
+    let bg, border, fontColor, bw;
     if (est === "aprobada") {
       bg = "#071f14"; border = "#10b981"; fontColor = "#34d399"; bw = 2;
     } else if (est === "regular") {
       bg = "#1a1400"; border = "#f59e0b"; fontColor = "#fbbf24"; bw = 2;
       if (rendible) pulseIDs.add(m.id);
+    } else if (cursable) {
+      bg = "#051520"; border = "#22d3ee"; fontColor = "#38bdf8"; bw = 2;
+      pulseIDs.add(m.id);
     } else {
-      if (cursable) {
-        bg = "#051520"; border = "#22d3ee"; fontColor = "#38bdf8"; bw = 2;
-        pulseIDs.add(m.id);
-      } else {
-        bg = "#0f1e35"; border = "#1e3252"; fontColor = "#3d5070"; bw = 1.5;
-      }
+      bg = "#0f1e35"; border = "#1e3252"; fontColor = "#3d5070"; bw = 1.5;
     }
 
-    nodes.update({
-      id: m.id,
-      color: { background: bg, border: border },
-      font: { color: fontColor, size: 13, face: "IBM Plex Mono" },
-      borderWidth: bw,
-      shadow: { enabled: true, color: "rgba(0,0,0,0.55)", size: 14, x: 0, y: 5 }
-    });
+    const sig = `${bg}|${border}|${fontColor}|${bw}`;
+    if (_lastNodeSig.get(m.id) !== sig) {
+      _lastNodeSig.set(m.id, sig);
+      nodeUpdates.push({
+        id: m.id,
+        color: { background: bg, border },
+        font: { color: fontColor, size: 13, face: "IBM Plex Mono" },
+        borderWidth: bw,
+        shadow: { enabled: true, color: "rgba(0,0,0,0.55)", size: 14, x: 0, y: 5 }
+      });
+    }
   });
+  if (nodeUpdates.length) nodes.update(nodeUpdates);
 
-  // ── EDGES
+  // ── EDGES (con diff)
+  const edgeUpdates = [];
   rawEdges.forEach(e => {
     const estFrom = estado(e.from);
     const hidden = edgeMode !== "ambos" && e.tipo !== edgeMode;
-
-    let color = "#1e3252";
     const width = e.tipo === "aprobada" ? 2.2 : 1.4;
 
+    let color = "#1e3252";
     if (!hidden) {
       if (e.tipo === "regular") {
         if (estFrom === "aprobada") color = "#10b981";
         else if (estFrom === "regular") color = "#22d3ee";
-        else color = "#1e3252";
-      } else {
-        if (estFrom === "aprobada") color = "#f59e0b";
-        else color = "#1e3252";
+      } else if (estFrom === "aprobada") {
+        color = "#f59e0b";
       }
     }
-
-    edges.update({
-      id: e.id,
-      color: { color: hidden ? "transparent" : color },
-      width,
-      dashes: false
-    });
+    const finalColor = hidden ? "transparent" : color;
+    const sig = `${finalColor}|${width}`;
+    if (_lastEdgeSig.get(e.id) !== sig) {
+      _lastEdgeSig.set(e.id, sig);
+      edgeUpdates.push({ id: e.id, color: { color: finalColor }, width, dashes: false });
+    }
   });
+  if (edgeUpdates.length) edges.update(edgeUpdates);
 
   // ── STATS
-  const aprobadas = materias.filter(m => estado(m.id) === "aprobada").length;
-  const regulares = materias.filter(m => estado(m.id) === "regular").length;
-  const cursables = materias.filter(m => esCursable(m)).length;
   const total = materias.length;
   const pct = ((aprobadas / total) * 100).toFixed(1);
 
@@ -494,16 +532,9 @@ function actualizar() {
   document.getElementById("barra").style.width = pct + "%";
 }
 
-// ── INIT — cargar desde Supabase y luego dibujar
-network.once("afterDrawing", () => {
-  // Esperar a que _sb esté disponible (lo pone index.html)
-  const esperarSB = setInterval(() => {
-    if (window._sb) {
-      clearInterval(esperarSB);
-      cargarDesdeNube();
-    }
-  }, 50);
-});
+// ── INIT — cargar desde Supabase tras el primer draw
+// (_sb se setea sync en index.html antes de que corra este script defer)
+network.once("afterDrawing", () => cargarDesdeNube());
 
 // ═══════════════════════════════════════════════════
 //  ELECTIVAS - Sistema completo
