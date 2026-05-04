@@ -11,10 +11,6 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3480409078905299"
     crossorigin="anonymous"></script>
 
-  <!-- Google AdSense - Código de verificación -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3480409078905239"
-    crossorigin="anonymous"></script>
-
   <!-- Fuentes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,24 +30,21 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Protección de sesión: se ejecuta ANTES que el resto de la página -->
   <script>
+    // Inicialización síncrona del cliente — _sb queda disponible
+    // antes de que corra el script.js (que es defer).
+    const { createClient } = supabase;
+    window._sb = createClient(
+      'https://qfqajybfwvfqowcfwibv.supabase.co',
+      'sb_publishable_dMFDLETv_JEKYmNxgIYl6w_0gmhJS8Q'
+    );
     (async () => {
-      const { createClient } = supabase;
-      const sb = createClient(
-        'https://qfqajybfwvfqowcfwibv.supabase.co',
-        'sb_publishable_dMFDLETv_JEKYmNxgIYl6w_0gmhJS8Q'
-      );
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        // No hay sesión → redirigir al login
-        window.location.replace('login.html');
-      }
-      // Guardamos el cliente en window para usarlo desde script.js si hace falta
-      window._sb = sb;
+      const { data: { session } } = await window._sb.auth.getSession();
+      if (!session) window.location.replace('login.html');
     })();
   </script>
 </head>
 
-<body style="visibility:hidden" onload="document.body.style.visibility='visible'"
+<body style="visibility:hidden" onload="document.body.style.visibility='visible'">
 
   <!-- ═══════════════════════════════════════════════════
      HEADER
